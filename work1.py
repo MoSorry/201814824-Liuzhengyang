@@ -13,34 +13,40 @@ from numpy import *
 from os import listdir,mkdir,path
 import re
 import operator
-origin = 'D:/data mining/20news-18828' #确定数据存储的目录
-sample = 'D:/data mining/20news'     #新的存放数据的文件夹
+oripath = 'D:/data mining/20news-18828' #原始目录
+path = 'D:/data mining/20news'
 
-def createFiles():                                #将数据复制到新文件夹，避免原始数据破坏
-    srcFilesList = listdir('origin')      #将目录下每个文件夹名称以组的形式保存
-    for i in range(len(srcFilesList)):
+def createFiles(path):                                #将数据复制到新文件夹，避免原始数据破坏
+    FList = listdir('oripath')             #将目录下每个文件夹名称以组的形式保存
+    for i in range(len(FList)):
         if i==0: continue
-        dataFilesDir = 'origin/' + srcFilesList[i]  # 确定每个文件夹的路径
+        dataFilesDir = 'oripath/' + FList[i]
         dataFilesList = listdir(dataFilesDir)               #确定每个新闻类别路径下的具体文件名称
-        targetDir = 'sample/' + srcFilesList[i] # 新文件夹的每个的路径
+        targetDir = 'path/' + FList[i]
         if path.exists(targetDir)==False:
-            mkdir(targetDir)                                #创建相应的文件夹
+            mkdir(targetDir)
         for j in range(len(dataFilesList)):
-            createProcessFile(srcFilesList[i],dataFilesList[j])#调用createProcessFile()在新文档中处理文本
-
+            createProcessFile(FList[i],dataFilesList[j])
 
 def createProcessFile(srcFilesName,dataFilesName):
-    srcFile = 'origin/' + srcFilesName + '/' + dataFilesName
-    targetFile= 'sample/' + srcFilesName\
+    srcFile = 'oripath/' + srcFilesName + '/' + dataFilesName
+    targetFile= 'path/' + srcFilesName\
                 + '/' + dataFilesName
     fw = open(targetFile,'w')
     dataList = open(srcFile).readlines()
     for line in dataList:          #复制新闻内容
-        resLine = lineProcess(line) # 调用lineProcess()处理每行文本
+        resLine = lineProcess(line)
         for word in resLine:
             fw.write('%s\n' % word) #一行一个单词
     fw.close()
-#######################################################预处理###########################################################
+######################################词干提取##################################
+def steming(docwordlist):  # 词干提取
+        st_wordlist = []
+        stemmer = SnowballStemmer("english")  # 选择一种语言
+        for each in docwordlist:
+            st_wordlist.append(stemmer.stem(each))
+        return st_wordlist
+##########################预处理###########################################################
 def lineProcess(line):
     stopwords = nltk.corpus.stopwords.words('english') #去停用词
     porter = nltk.PorterStemmer()  #词干分析
@@ -50,16 +56,41 @@ def lineProcess(line):
              word.lower() not in stopwords]
     return words
 
+def countWords(path):
+    wordMap = {}
+    newWordMap = {}
+    sampleFilesList = listdir(path)
+    for i in range(len(sampleFilesList)):
+        sampleFilesDir = path + '/' + sampleFilesList[i]
+        sampleList = listdir(sampleFilesDir)
+        for j in range(len(sampleList)):
+            sampleDir = sampleFilesDir + '/' + sampleList[j]
+            for line in open(sampleDir).readlines():
+                word = line.strip('\n')
+                wordMap[word] = wordMap.get(word,0.0) + 1.0
+    for key, value in wordMap.items():
+        if value > 4:
+            newWordMap[key] = value
+    sortedNewWordMap = sorted(newWordMap.iteritems())
+    print ('wordMap size : %d' % len(wordMap))
+    return sortedNewWordMap
 
+def printWordMap():
+    countLine=0
+    fr = open('D:\\Vector\\WordCountMap.txt','w')
+    sortedWordMap = countWords()
+    for item in sortedWordMap:
+        fr.write('%s %.1f\n' % (item[0],item[1]))
+        countLine += 1
 ##################################################### IDF###############################################################
 def computeIDF():
     fileDir = 'sample'
     wordDocMap = {}  # <word, (docM,...,docN)>
     IDFPerWord = {}  # <word, IDF>
     countDoc = 0.0
-    cateList = listdir(fileDir)
-    for i in range(len(cateList)):
-        sampleDir = fileDir + '/' + cateList[i]
+    cList = listdir(fileDir)
+    for i in range(len(cList)):
+        sampleDir = fileDir + '/' + cList[i]
         sampleList = listdir(sampleDir)
         for j in range(len(sampleList)):
             sample = sampleDir + '/' + sampleList[j]
@@ -77,27 +108,18 @@ def computeIDF():
         IDFPerWord[word] = IDF
     return IDFPerWord
 
-def main():
-    start=time.clock()
-    IDFPerWord = computeIDF()
-    end=time.clock()
-    print ('runtime: ' + str(end-start))
-    voc='sample/' + vocabulary
-    mkdir(voc)
-    fw = open('voc','w')
-    for word, IDF in IDFPerWord.items():
-        fw.write('%s %.6f\n' % (word,IDF))
-    fw.close()
 
-def computeTFMultiIDF(indexOfSample, trainSamplePercent):
+###################################计算TF 生成VSM##################################################
+
+def computeTF(indexOfSample, trainSamplePercent):
         IDFPerWord = {}  # <word, IDF值> 从文件中读入后的数据保存在此字典结构中
         for line in open('IDFPerWord').readlines():
             (word, IDF) = line.strip('\n').split(' ')
             IDFPerWord[word] = IDF
 
-        fileDir = 'processedSampleOnlySpecial_2'
-        trainFileDir = "docVector/" + 'wordTFIDFMapTrainSample' + str(indexOfSample)
-        testFileDir = "docVector/" + 'wordTFIDFMapTestSample' + str(indexOfSample)
+        fileDir = 'path'
+        trainFileDir = "Vector/" + 'TFIDFMap' + str(indexOfSample)
+        testFileDir = "Vector/" + 'TFIDFMap' + str(indexOfSample)
 
         tsTrainWriter = open(trainFileDir, 'w')
         tsTestWriter = open(testFileDir, 'w')
@@ -134,3 +156,30 @@ def computeTFMultiIDF(indexOfSample, trainSamplePercent):
         tsTrainWriter.close()
         tsTestWriter.close()
         tsWriter.close()
+
+def CreateVSM(path):
+            database = list(_flatten(path))
+            Vocabulary = printWordMap()
+            Document_Frequency =countWords(path)
+            IDF_v = computeIDF()
+            TF_list = []
+            VSM = []
+            for Document in Document_Frequency:
+                TF_v = computeTF(Document, Vocabulary)
+                TF_list.append(TF_v)
+                VSM_v = TF_v * IDF_v
+                print(IDF_v, TF_v, VSM_v)
+                VSM.append(VSM_v)
+
+            return VSM
+
+def main():
+            IDFPerWord = computeIDF()
+            voc = 'path/' + 'vocabulary'
+            mkdir(voc)
+            fw = open('voc', 'w')
+            for word, IDF in IDFPerWord.items():
+                fw.write('%s %.6f\n' % (word, IDF))
+            fw.close()
+            VSM = CreateVSM(path)
+
