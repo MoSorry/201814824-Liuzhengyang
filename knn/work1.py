@@ -15,7 +15,7 @@ import re
 import operator
 
 
-def createFiles(oripath,path):                                #将数据复制到新文件夹，避免原始数据破坏
+def createFiles(oripath,path):
     FList = listdir('oripath')             #将目录下每个文件夹名称以组的形式保存
     for i in range(len(FList)):
         if i==0: continue
@@ -38,14 +38,15 @@ def createProcessFile(srcFilesName,dataFilesName):
         for word in resLine:
             fw.write('%s\n' % word) #一行一个单词
     fw.close()
-######################################词干提取##################################
+######################################预处理##################################
+'''
 def steming(docwordlist):  # 词干提取
         st_wordlist = []
         stemmer = SnowballStemmer("english")  # 选择一种语言
         for each in docwordlist:
             st_wordlist.append(stemmer.stem(each))
         return st_wordlist
-##########################预处理###########################################################
+'''
 def lineProcess(line):
     stopwords = nltk.corpus.stopwords.words('english') #去停用词
     porter = nltk.PorterStemmer()  #词干分析
@@ -74,13 +75,6 @@ def countWords(path):
     print ('wordMap size : %d' % len(wordMap))
     return sortedNewWordMap
 
-def printWordMap():
-    countLine=0
-    fr = open('D:\\Vector\\WordCountMap.txt','w')
-    sortedWordMap = countWords()
-    for item in sortedWordMap:
-        fr.write('%s %.1f\n' % (item[0],item[1]))
-        countLine += 1
 ##################################################### IDF###############################################################
 def computeIDF():
     fileDir = 'sample'
@@ -109,7 +103,7 @@ def computeIDF():
 
 
 ######################################################TF###################################
-def computeTF(indexOfSample, trainSamplePercent):
+def computeTF(indexOfSample, Percent):
         IDFPerWord = {}  # <word, IDF值> 从文件中读入后的数据保存在此字典结构中
         for line in open('IDFPerWord').readlines():
             (word, IDF) = line.strip('\n').split(' ')
@@ -127,8 +121,8 @@ def computeTF(indexOfSample, trainSamplePercent):
             sampleDir = fileDir + '/' + cateList[i]
             sampleList = listdir(sampleDir)
 
-            testBeginIndex = indexOfSample * (len(sampleList) * (1 - trainSamplePercent))
-            testEndIndex = (indexOfSample + 1) * (len(sampleList) * (1 - trainSamplePercent))
+            testBeginIndex = indexOfSample * (len(sampleList) * (1 - Percent))
+            testEndIndex = (indexOfSample + 1) * (len(sampleList) * (1 - Percent))
 
             for j in range(len(sampleList)):
                 TFPerDocMap = {}  # <word, 文档doc下该word的出现次数>
@@ -154,6 +148,14 @@ def computeTF(indexOfSample, trainSamplePercent):
         tsTrainWriter.close()
         tsTestWriter.close()
         tsWriter.close()
+
+def printWordMap():
+    countLine=0
+    fr = open('D:\\Vector\\WordCountMap.txt','w')
+    sortedWordMap = countWords()
+    for item in sortedWordMap:
+        fr.write('%s %.1f\n' % (item[0],item[1]))
+        countLine += 1
 
 def CreateVSM(path):
             database = list(_flatten(path))
@@ -214,8 +216,6 @@ def DataDivide(label,VSM):
         d = data[train_range[i+1][0]:train_range[i+1][1],:]
         test_data = numpy.r_[test_data,c]
         train_data = numpy.r_[train_data,d]
-    train_data.tofile(r"E:\data mining\train_data.txt")
-    test_data.tofile(r"E:\data mining\test_data.txt")
     return train_data,test_data
 def Dividexy(data,pos):
     x_data = data[:,0:pos]
@@ -224,7 +224,6 @@ def Dividexy(data,pos):
 
 ##########################################KNN###################################################
 def Disdence(x_train,x_test):
-    print("----------------------计算距离------------------")
     inner_product = numpy.dot(x_train, x_test.T)
     print(inner_product.shape)
     norm_train = numpy.linalg.norm(x_train, ord=2, axis=1, keepdims=False)
@@ -232,12 +231,10 @@ def Disdence(x_train,x_test):
     norm_nd = numpy.dot(numpy.array([norm_train]).T, numpy.array([norm_test]))
     distance = inner_product / norm_nd
     print(distance.shape)
-    print("-----------------距离计算结束--------------------")
-    distance.tofile('E:\data mining\distance.txt')
+    distance.tofile('D:\data mining\distance.txt')
     return numpy.nan_to_num(distance)
 
 def KNN(distance,y_train,K):
-    print("--------------KNN分类----------------")
     num_test = len(distance[0])#获得测试数据数量
     y_predict = []#预测类别列表
     for i in range(num_test):
@@ -249,7 +246,6 @@ def KNN(distance,y_train,K):
         class_bag = collections.Counter(NN)
         predict_label = class_bag.most_common(1)
         y_predict.append(list(dict(predict_label).keys())[0])
-    print('----------------KNN分类结束-----------------------')
     return numpy.array(y_predict).reshape(len(y_predict),1)
 
 
@@ -282,9 +278,8 @@ def main():
             train_data, test_data = DataDivide(Label, VSM)
             data = numpy.c_[VSM,Label]
             vec_length = len(VSM[0])
-            x_train, y_train = Dividexy(train_data, vec_length)
-            x_test, y_test = Dividexy(test_data, vec_length)
-            distance = Disdence(x_train,x_test)
-            y_predict = KNN(distance,y_train,11)
-            y_predict.tofile(r"E:\data mining\predict.txt")
-            print('the accurency is %f'%evaule(y_predict,y_test))
+            traina, trainb = Dividexy(train_data, vec_length)
+            testa, testb = Dividexy(test_data, vec_length)
+            distance = Disdence(traina,testa)
+            predict = KNN(distance,trainb,20)
+            print('the accurency is %f'%evaule(predict,testb))
