@@ -3,14 +3,12 @@ import string
 import numpy
 import datetime
 import random
-
 from tkinter import _flatten
 from textblob import TextBlob
 from collections import Counter
 from nltk.stem import SnowballStemmer
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
-
 from sklearn.model_selection import train_test_split
 
 ##########################################获取路径############################################
@@ -131,6 +129,44 @@ def frequency(traindict,low,high):
     return traindict
                    
 ##################################分类并计算正确率##############################
+'''
+def bonuli(test,train):
+     classposible = ClassPossib(train)
+     wordpossible = WordPossible(train)
+     testpossible = {}
+     for key in test.keys():
+         testdocumentlist = test[key] 
+         documentlist = []
+         for i in range(len(testdocumentlist)):
+             eachedocument = testdocumentlist[i]
+             classpossible = []
+             for key1 in classposible.keys():
+                 classpos = classposible[key1] 
+                 for word in eachedocument:
+                     if word in wordpossible[key1].keys():
+                         classpos += wordpossible[key1][word]
+                 docpossible.append(classpos)
+             documentlist.append(classpossible)
+         testpossible[key] = documentlist
+         jsonpredict = json.dumps(testpossible)
+         f = open(r'E:\data mining\homework2\伯努利分布.json','w')
+         f.write(jsonpredict)
+         f.close()
+     return testpossible
+def accrency(bonuli):
+     right = 0
+     total = 0
+     for key in bonuli.keys():
+         for i in range(len(bonuli[key])):
+             total += 1
+
+             print(int(key),bonuli[key][i].index(max(bonuli[key][i]))+1)
+             if int(key) == bonuli[key][i].index(max(bonuli[key][i]))+1:
+                 right += 1
+     print(total,right)
+     return right/total
+'''
+
 
 def NBC(traindict,testdict,trainnum):
     i=0
